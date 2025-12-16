@@ -1,15 +1,17 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 
 <head>
-    <meta charset="utf-8">
+    <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Skin Preview</title>
+    <title>3D Preview</title>
+    <script src="https://cdn.jsdelivr.net/npm/skinview3d@latest/bundles/skinview3d.bundle.js"></script>
     <style>
         * {
             margin: 0;
             padding: 0;
             box-sizing: border-box;
+            touch-action: none;
         }
 
         html,
@@ -18,255 +20,272 @@
             height: 100%;
             overflow: hidden;
             background: linear-gradient(135deg, #1a2a3a 0%, #2c3e50 100%);
-            touch-action: none;
         }
 
-        #skin_container {
+        #container {
             width: 100%;
             height: 100%;
-            position: relative;
-        }
-
-        canvas {
-            display: block;
-        }
-
-        #draw_mode_indicator {
-            position: absolute;
-            top: 10px;
-            left: 50%;
-            transform: translateX(-50%);
-            background: rgba(0, 0, 0, 0.7);
-            color: white;
-            padding: 8px 16px;
-            border-radius: 20px;
-            font-family: sans-serif;
-            font-size: 14px;
-        }
-
-        .controls {
-            position: absolute;
-            bottom: 20px;
-            left: 50%;
-            transform: translateX(-50%);
             display: flex;
-            gap: 10px;
+            flex-direction: row;
         }
 
-        .control-btn {
-            width: 50px;
-            height: 50px;
-            border-radius: 50%;
-            border: none;
-            background: rgba(255, 255, 255, 0.9);
-            font-size: 20px;
-            cursor: pointer;
-            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.3);
+        #gridPanel {
+            width: 80px;
+            height: 100%;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            padding: 10px 5px;
         }
 
-        .control-btn.active {
-            background: #4CAF50;
-            color: white;
+        #gridCanvas {
+            border: 1px solid rgba(255, 255, 255, 0.3);
+            border-radius: 4px;
+            image-rendering: pixelated;
+        }
+
+        #gridLabel {
+            color: rgba(255, 255, 255, 0.6);
+            font-size: 10px;
+            margin-top: 5px;
+            font-family: sans-serif;
+        }
+
+        #viewerContainer {
+            flex: 1;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        #skinViewer {
+            border-radius: 8px;
         }
     </style>
 </head>
 
 <body>
-    <div id="skin_container"></div>
-    <div id="draw_mode_indicator">Rotate Mode - Tap button to draw</div>
-    <div class="controls">
-        <button class="control-btn" id="rotate_btn" onclick="setMode('rotate')">🔄</button>
-        <button class="control-btn" id="draw_btn" onclick="setMode('draw')">✏️</button>
+    <div id="container">
+        <div id="gridPanel">
+            <canvas id="gridCanvas" width="64" height="64"></canvas>
+            <div id="gridLabel">UV Map</div>
+        </div>
+        <div id="viewerContainer">
+            <canvas id="skinViewer"></canvas>
+        </div>
     </div>
 
-    <script src="https://cdn.jsdelivr.net/npm/skinview3d@3.0.0/bundles/skinview3d.bundle.min.js"></script>
     <script>
-        let skinViewer = null;
-        let currentMode = 'rotate';
-        let currentColor = '#FF0000';
+        let viewer = null;
         let skinCanvas = null;
         let skinCtx = null;
+        let drawMode = false;
+        let currentColor = '#FF0000';
+        let painting = false;
 
-        function initViewer() {
-            const container = document.getElementById('skin_container');
+        const gridCanvas = document.getElementById('gridCanvas');
+        const gridCtx = gridCanvas.getContext('2d');
 
-            // Create a canvas to hold the skin texture
+        function init() {
+            const container = document.getElementById('viewerContainer');
+            const width = Math.min(container.clientWidth * 0.95, 350);
+            const height = Math.min(container.clientHeight * 0.9, 450);
+
+            // Offscreen canvas for skin texture
             skinCanvas = document.createElement('canvas');
             skinCanvas.width = 64;
             skinCanvas.height = 64;
             skinCtx = skinCanvas.getContext('2d');
-
-            // Fill with default gray
             skinCtx.fillStyle = '#C8C8C8';
             skinCtx.fillRect(0, 0, 64, 64);
 
-            skinViewer = new skinview3d.SkinViewer({
-                canvas: document.createElement('canvas'),
-                width: container.clientWidth,
-                height: container.clientHeight,
+            viewer = new skinview3d.SkinViewer({
+                canvas: document.getElementById('skinViewer'),
+                width: width,
+                height: height,
                 skin: skinCanvas.toDataURL()
             });
 
-            container.appendChild(skinViewer.canvas);
+            viewer.zoom = 0.9;
+            viewer.autoRotate = true;
+            viewer.autoRotateSpeed = 0.5;
+            viewer.animation = new skinview3d.IdleAnimation();
 
-            // Enable rotation
-            skinViewer.controls.enableRotate = true;
-            skinViewer.controls.enableZoom = true;
-            skinViewer.controls.enablePan = false;
+            // Handle 3D painting
+            const viewerCanvas = document.getElementById('skinViewer');
+            viewerCanvas.addEventListener('pointerdown', onPointerDown);
+            viewerCanvas.addEventListener('pointermove', onPointerMove);
+            viewerCanvas.addEventListener('pointerup', onPointerUp);
+            viewerCanvas.addEventListener('pointerleave', onPointerUp);
 
-            // Add idle animation
-            skinViewer.animation = new skinview3d.IdleAnimation();
-            skinViewer.animation.speed = 0.5;
-
-            // Handle resize
             window.addEventListener('resize', () => {
-                skinViewer.width = container.clientWidth;
-                skinViewer.height = container.clientHeight;
+                viewer.width = Math.min(container.clientWidth * 0.95, 350);
+                viewer.height = Math.min(container.clientHeight * 0.9, 450);
             });
 
-            // Handle drawing on the 3D model
-            skinViewer.canvas.addEventListener('click', handleCanvasClick);
-            skinViewer.canvas.addEventListener('touchstart', handleTouch, { passive: false });
-            skinViewer.canvas.addEventListener('touchmove', handleTouch, { passive: false });
-
-            updateModeUI();
+            updateGridPanel();
         }
 
-        function setMode(mode) {
-            currentMode = mode;
-            skinViewer.controls.enableRotate = (mode === 'rotate');
-            updateModeUI();
+        function updateGridPanel() {
+            // Draw the current skin texture with grid
+            gridCtx.clearRect(0, 0, 64, 64);
+            gridCtx.drawImage(skinCanvas, 0, 0);
 
-            // Notify Flutter
-            if (window.FlutterChannel) {
-                window.FlutterChannel.postMessage(JSON.stringify({ type: 'mode_change', mode: mode }));
+            // Draw grid lines
+            gridCtx.strokeStyle = 'rgba(255,255,255,0.3)';
+            gridCtx.lineWidth = 0.5;
+            for (let i = 0; i <= 64; i += 8) {
+                gridCtx.beginPath();
+                gridCtx.moveTo(i, 0);
+                gridCtx.lineTo(i, 64);
+                gridCtx.stroke();
+                gridCtx.beginPath();
+                gridCtx.moveTo(0, i);
+                gridCtx.lineTo(64, i);
+                gridCtx.stroke();
             }
         }
 
-        function updateModeUI() {
-            const indicator = document.getElementById('draw_mode_indicator');
-            const rotateBtn = document.getElementById('rotate_btn');
-            const drawBtn = document.getElementById('draw_btn');
+        function onPointerDown(e) {
+            if (!drawMode) return;
+            e.preventDefault();
+            painting = true;
+            paint3D(e);
+        }
 
-            if (currentMode === 'rotate') {
-                indicator.textContent = 'Rotate Mode - Drag to rotate';
-                rotateBtn.classList.add('active');
-                drawBtn.classList.remove('active');
-            } else {
-                indicator.textContent = 'Draw Mode - Tap on model to paint';
-                rotateBtn.classList.remove('active');
-                drawBtn.classList.add('active');
+        function onPointerMove(e) {
+            if (!drawMode || !painting) return;
+            e.preventDefault();
+            paint3D(e);
+        }
+
+        function onPointerUp(e) {
+            if (painting) {
+                painting = false;
+                updateGridPanel();
+                notifyFlutter();
             }
         }
 
-        function handleCanvasClick(event) {
-            if (currentMode !== 'draw') return;
+        function paint3D(e) {
+            const canvas = document.getElementById('skinViewer');
+            const rect = canvas.getBoundingClientRect();
+            const x = e.clientX - rect.left;
+            const y = e.clientY - rect.top;
 
-            const rect = skinViewer.canvas.getBoundingClientRect();
-            const x = event.clientX - rect.left;
-            const y = event.clientY - rect.top;
-
-            // Simple raycast - map screen position to approximate UV
-            // This is a simplified version; proper raycasting requires Three.js raycaster
-            const uv = screenToUV(x, y, rect.width, rect.height);
+            const uv = screenToSkinUV(x, y, rect.width, rect.height);
             if (uv) {
-                paintAtUV(uv.u, uv.v);
+                skinCtx.fillStyle = currentColor;
+                skinCtx.fillRect(uv.x, uv.y, 1, 1);
+                viewer.loadSkin(skinCanvas.toDataURL());
+                updateGridPanel();
             }
         }
 
-        function handleTouch(event) {
-            if (currentMode !== 'draw') return;
-            event.preventDefault();
+        function screenToSkinUV(sx, sy, w, h) {
+            const nx = (sx / w) * 2 - 1;
+            const ny = (sy / h) * 2 - 1;
 
-            const touch = event.touches[0];
-            const rect = skinViewer.canvas.getBoundingClientRect();
-            const x = touch.clientX - rect.left;
-            const y = touch.clientY - rect.top;
-
-            const uv = screenToUV(x, y, rect.width, rect.height);
-            if (uv) {
-                paintAtUV(uv.u, uv.v);
-            }
-        }
-
-        // Simplified screen to UV mapping
-        // For proper implementation, use Three.js Raycaster
-        function screenToUV(screenX, screenY, canvasWidth, canvasHeight) {
-            // Normalize screen coordinates to -1 to 1
-            const ndcX = (screenX / canvasWidth) * 2 - 1;
-            const ndcY = -(screenY / canvasHeight) * 2 + 1;
-
-            // Very rough approximation - assumes model is centered and roughly fills screen
-            // Map to texture coordinates based on visible area
-            // This is approximate; proper solution requires raycasting
-
-            // Center region = face/front of body
-            if (Math.abs(ndcX) < 0.3 && ndcY > 0 && ndcY < 0.5) {
-                // Head front area (approx)
-                const u = 8 + (ndcX + 0.3) / 0.6 * 8;
-                const v = 8 + (0.5 - ndcY) / 0.5 * 8;
-                return { u: Math.floor(u), v: Math.floor(v) };
+            // Head
+            if (Math.abs(nx) < 0.25 && ny > -0.5 && ny < 0.1) {
+                const headU = 8 + Math.floor((nx + 0.25) / 0.5 * 8);
+                const headV = 8 + Math.floor((ny + 0.5) / 0.6 * 8);
+                if (headU >= 8 && headU < 16 && headV >= 8 && headV < 16) {
+                    return { x: headU, y: headV };
+                }
             }
 
-            if (Math.abs(ndcX) < 0.3 && ndcY < 0 && ndcY > -0.6) {
-                // Body front area (approx)
-                const u = 20 + (ndcX + 0.3) / 0.6 * 8;
-                const v = 20 + (-ndcY) / 0.6 * 12;
-                return { u: Math.floor(u), v: Math.floor(v) };
+            // Body
+            if (Math.abs(nx) < 0.2 && ny >= 0.1 && ny < 0.55) {
+                const bodyU = 20 + Math.floor((nx + 0.2) / 0.4 * 8);
+                const bodyV = 20 + Math.floor((ny - 0.1) / 0.45 * 12);
+                if (bodyU >= 20 && bodyU < 28 && bodyV >= 20 && bodyV < 32) {
+                    return { x: bodyU, y: bodyV };
+                }
+            }
+
+            // Right arm
+            if (nx < -0.2 && nx > -0.4 && ny > 0.1 && ny < 0.55) {
+                const armU = 44 + Math.floor((nx + 0.4) / 0.2 * 4);
+                const armV = 20 + Math.floor((ny - 0.1) / 0.45 * 12);
+                if (armU >= 44 && armU < 48 && armV >= 20 && armV < 32) {
+                    return { x: armU, y: armV };
+                }
+            }
+
+            // Left arm
+            if (nx > 0.2 && nx < 0.4 && ny > 0.1 && ny < 0.55) {
+                const armU = 36 + Math.floor((nx - 0.2) / 0.2 * 4);
+                const armV = 52 + Math.floor((ny - 0.1) / 0.45 * 12);
+                if (armU >= 36 && armU < 40 && armV >= 52 && armV < 64) {
+                    return { x: armU, y: armV };
+                }
+            }
+
+            // Right leg
+            if (nx < 0 && nx > -0.15 && ny >= 0.55 && ny < 0.9) {
+                const legU = 4 + Math.floor((nx + 0.15) / 0.15 * 4);
+                const legV = 20 + Math.floor((ny - 0.55) / 0.35 * 12);
+                if (legU >= 4 && legU < 8 && legV >= 20 && legV < 32) {
+                    return { x: legU, y: legV };
+                }
+            }
+
+            // Left leg
+            if (nx >= 0 && nx < 0.15 && ny >= 0.55 && ny < 0.9) {
+                const legU = 20 + Math.floor(nx / 0.15 * 4);
+                const legV = 52 + Math.floor((ny - 0.55) / 0.35 * 12);
+                if (legU >= 20 && legU < 24 && legV >= 52 && legV < 64) {
+                    return { x: legU, y: legV };
+                }
             }
 
             return null;
         }
 
-        function paintAtUV(u, v) {
-            if (u < 0 || u >= 64 || v < 0 || v >= 64) return;
-
-            skinCtx.fillStyle = currentColor;
-            skinCtx.fillRect(u, v, 1, 1);
-
-            // Update the 3D model
-            skinViewer.loadSkin(skinCanvas.toDataURL());
-
-            // Notify Flutter of the paint
+        function notifyFlutter() {
             if (window.FlutterChannel) {
+                const dataURL = skinCanvas.toDataURL();
                 window.FlutterChannel.postMessage(JSON.stringify({
-                    type: 'paint',
-                    x: u,
-                    y: v,
-                    color: currentColor
+                    type: 'skin_update',
+                    data: dataURL.split(',')[1]
                 }));
             }
         }
 
-        // Update skin texture from base64
-        function updateSkin(base64Data) {
+        function loadSkin(base64Data) {
             const img = new Image();
-            img.onload = function () {
+            img.onload = () => {
                 skinCtx.clearRect(0, 0, 64, 64);
                 skinCtx.drawImage(img, 0, 0);
-                if (skinViewer) {
-                    skinViewer.loadSkin(skinCanvas.toDataURL());
-                }
+                if (viewer) viewer.loadSkin(skinCanvas.toDataURL());
+                updateGridPanel();
             };
             img.src = 'data:image/png;base64,' + base64Data;
         }
 
-        // Set current drawing color from Flutter
         function setColor(hexColor) {
             currentColor = hexColor;
         }
 
-        // Initialize when ready
-        if (document.readyState === 'loading') {
-            document.addEventListener('DOMContentLoaded', initViewer);
-        } else {
-            initViewer();
+        function setDrawMode(enabled) {
+            drawMode = enabled;
+            if (viewer) {
+                viewer.autoRotate = !enabled;
+                viewer.controls.enableRotate = !enabled;
+            }
         }
 
-        // Expose functions for Flutter
-        window.updateSkin = updateSkin;
+        if (document.readyState === 'loading') {
+            document.addEventListener('DOMContentLoaded', init);
+        } else {
+            init();
+        }
+
+        window.loadSkin = loadSkin;
         window.setColor = setColor;
-        window.setMode = setMode;
+        window.setDrawMode = setDrawMode;
     </script>
 </body>
 

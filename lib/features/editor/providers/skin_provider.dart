@@ -3,7 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:image/image.dart' as img;
 import 'package:gal/gal.dart';
 
-enum EditorTool { pencil, eraser, fill, picker }
+enum EditorTool { pencil, eraser, fill, picker, rotate }
 
 class SkinProvider extends ChangeNotifier {
   img.Image? _skinImage;
