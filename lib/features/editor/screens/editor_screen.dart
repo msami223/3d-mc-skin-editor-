@@ -21,20 +21,10 @@ class _EditorScreenState extends State<EditorScreen> {
   @override
   void initState() {
     super.initState();
-    _loadHtml();
-  }
-
-  Future<void> _loadHtml() async {
-    final html = await rootBundle.loadString('assets/web/skin_editor.html');
-    setState(() {
-      _htmlContent = html;
-    });
     _initWebView();
   }
 
   void _initWebView() {
-    if (_htmlContent == null) return;
-    
     _controller = WebViewController()
       ..setJavaScriptMode(JavaScriptMode.unrestricted)
       ..setBackgroundColor(const Color(0xFF1a2a3a))
@@ -50,9 +40,12 @@ class _EditorScreenState extends State<EditorScreen> {
             setState(() => _isLoaded = true);
             _loadSkinToWeb();
           },
+          onWebResourceError: (error) {
+            debugPrint('Web Resource Error: ${error.description}');
+          },
         ),
       )
-      ..loadHtmlString(_htmlContent!);
+      ..loadFlutterAsset('assets/web/skin_editor.html');
   }
 
   void _handleWebMessage(String message) {
@@ -97,15 +90,52 @@ class _EditorScreenState extends State<EditorScreen> {
         actions: [
           IconButton(
             onPressed: () async {
-              final success = await context.read<SkinProvider>().saveToGallery();
-              if (context.mounted) {
-                ScaffoldMessenger.of(context).showSnackBar(
-                  SnackBar(
-                    content: Text(success ? '✅ Saved to Gallery!' : '❌ Failed to save'),
-                    backgroundColor: success ? Colors.green : Colors.red,
-                    duration: const Duration(seconds: 2),
-                  ),
-                );
+              try {
+                // Call JavaScript saveImage() function
+                final result = await _controller.runJavaScriptReturningResult('saveImage()');
+                
+                if (result is String && result.isNotEmpty) {
+                  // Remove quotes from string result
+                  final base64Data = result.replaceAll('"', '');
+                  final bytes = base64Decode(base64Data);
+                  final image = img.decodeImage(bytes);
+                  
+                  if (image != null) {
+                    context.read<SkinProvider>().loadSkin(image);
+                    final success = await context.read<SkinProvider>().saveToGallery();
+                    
+                    if (context.mounted) {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        SnackBar(
+                          content: Text(success ? '✅ Saved to Gallery!' : '❌ Failed to save'),
+                          backgroundColor: success ? Colors.green : Colors.red,
+                          duration: const Duration(seconds: 2),
+                        ),
+                      );
+                    }
+                  }
+                } else {
+                  if (context.mounted) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(
+                        content: Text('❌ No image to save'),
+                        backgroundColor: Colors.red,
+                        duration: Duration(seconds: 2),
+                      ),
+                    );
+                  }
+                }
+              } catch (e) {
+                debugPrint('Save error: $e');
+                if (context.mounted) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(
+                      content: Text('❌ Save failed'),
+                      backgroundColor: Colors.red,
+                      duration: Duration(seconds: 2),
+                    ),
+                  );
+                }
               }
             },
             icon: const Icon(Icons.save),
@@ -113,9 +143,7 @@ class _EditorScreenState extends State<EditorScreen> {
           ),
         ],
       ),
-      body: _htmlContent == null
-          ? const Center(child: CircularProgressIndicator())
-          : WebViewWidget(controller: _controller),
+      body: WebViewWidget(controller: _controller),
     );
   }
 }

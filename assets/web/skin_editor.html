@@ -5,7 +5,8 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>Minecraft Skin Editor</title>
-    <script src="https://cdn.jsdelivr.net/npm/skinview3d@latest/bundles/skinview3d.bundle.js"></script>
+    <!-- Use Local Library -->
+    <script src="skinview3d.bundle.js"></script>
     <style>
         * {
             margin: 0;
@@ -18,643 +19,722 @@
             width: 100%;
             height: 100%;
             overflow: hidden;
-            background: #1a2a3a;
-            font-family: -apple-system, BlinkMacSystemFont, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            font-family: system-ui, sans-serif;
             color: white;
             touch-action: none;
         }
 
         .container {
-            width: 100%;
-            height: 100%;
             display: flex;
             flex-direction: column;
+            height: 100%;
+            width: 100%;
         }
 
-        /* Top toolbar */
-        .toolbar {
-            height: 50px;
-            background: #0d1a26;
+        .top-bar {
+            height: 60px;
+            flex-shrink: 0;
+            background: rgba(0, 0, 0, 0.2);
+            backdrop-filter: blur(10px);
             display: flex;
             align-items: center;
-            justify-content: space-between;
-            padding: 0 10px;
-            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+            justify-content: center;
+            z-index: 100;
         }
 
         .view-toggle {
+            background: rgba(0, 0, 0, 0.2);
+            padding: 4px;
+            border-radius: 12px;
             display: flex;
-            gap: 5px;
-        }
-
-        .toggle-btn {
-            padding: 6px 16px;
-            border: none;
-            border-radius: 6px;
-            background: rgba(255, 255, 255, 0.1);
-            color: white;
-            cursor: pointer;
-            font-size: 13px;
-        }
-
-        .toggle-btn.active {
-            background: #4CAF50;
-        }
-
-        /* Main content area */
-        .content {
-            flex: 1;
-            display: flex;
-            position: relative;
-            overflow: hidden;
-        }
-
-        /* Left sidebar - tools */
-        .left-sidebar {
-            width: 60px;
-            background: #0d1a26;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            padding: 10px 0;
             gap: 8px;
         }
 
-        .tool-btn {
-            width: 48px;
-            height: 48px;
-            border-radius: 10px;
-            background: transparent;
+        .toggle-btn {
             border: none;
-            color: white;
-            cursor: pointer;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            justify-content: center;
-            font-size: 10px;
-        }
-
-        .tool-btn.active {
-            background: #2196F3;
-        }
-
-        .tool-icon {
-            font-size: 20px;
-            margin-bottom: 2px;
-        }
-
-        .tool-divider {
-            width: 40px;
-            height: 1px;
-            background: rgba(255, 255, 255, 0.2);
-        }
-
-        /* Right sidebar - colors */
-        .right-sidebar {
-            width: 60px;
-            background: #0d1a26;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            padding: 10px 0;
-            gap: 6px;
-        }
-
-        .color-swatch {
-            width: 40px;
-            height: 40px;
+            background: none;
+            color: rgba(255, 255, 255, 0.7);
+            padding: 8px 16px;
             border-radius: 8px;
-            cursor: pointer;
-            border: 2px solid transparent;
+            font-weight: 600;
+            font-size: 14px;
         }
 
-        .color-swatch.active {
-            border-color: white;
-            box-shadow: 0 0 8px rgba(255, 255, 255, 0.5);
+        .toggle-btn.active {
+            background: white;
+            color: #667eea;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
         }
 
-        /* Canvas area */
-        .canvas-area {
+        .content {
             flex: 1;
+            position: relative;
             display: flex;
             align-items: center;
             justify-content: center;
-            position: relative;
+            overflow: hidden;
+            width: 100%;
         }
 
-        #canvas2d {
-            background: #222;
-            cursor: crosshair;
-            image-rendering: pixelated;
-            border: 2px solid rgba(255, 255, 255, 0.3);
-            border-radius: 8px;
-        }
-
-        #viewer3d {
-            border-radius: 8px;
+        #view2d,
+        #view3d {
+            width: 100%;
+            height: 100%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            position: absolute;
+            top: 0;
+            left: 0;
         }
 
         .hidden {
             display: none !important;
         }
 
-        /* Zoom controls */
-        .zoom-controls {
-            position: absolute;
-            bottom: 16px;
-            right: 16px;
-            display: flex;
-            flex-direction: column;
-            gap: 8px;
+        .canvas-wrapper {
+            position: relative;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
+            border-radius: 4px;
+            background: #2a2a2a;
         }
 
-        .zoom-btn {
+        #gridCanvas,
+        #drawCanvas {
+            position: absolute;
+            top: 0;
+            left: 0;
+            image-rendering: pixelated;
+            border-radius: 4px;
+        }
+
+        #gridCanvas {
+            z-index: 1;
+        }
+
+        #drawCanvas {
+            z-index: 2;
+            cursor: crosshair;
+        }
+
+        #viewer3d {
+            outline: none;
+        }
+
+        .mode-pill {
+            position: absolute;
+            top: 16px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: rgba(0, 0, 0, 0.6);
+            padding: 6px 16px;
+            border-radius: 20px;
+            font-size: 12px;
+            font-weight: 600;
+            pointer-events: none;
+            z-index: 50;
+        }
+
+        .controls-area {
+            flex-shrink: 0;
+            background: rgba(0, 0, 0, 0.4);
+            backdrop-filter: blur(20px);
+            border-top: 1px solid rgba(255, 255, 255, 0.1);
+            padding-bottom: env(safe-area-inset-bottom);
+        }
+
+        .color-bar {
+            height: 50px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+            overflow-x: auto;
+            white-space: nowrap;
+        }
+
+        .colors-scroll {
+            display: flex;
+            gap: 12px;
+            padding: 0 20px;
+            align-items: center;
+        }
+
+        .swatch {
+            width: 32px;
+            height: 32px;
+            border-radius: 50%;
+            border: 2px solid rgba(255, 255, 255, 0.2);
+            flex-shrink: 0;
+        }
+
+        .swatch.active {
+            transform: scale(1.2);
+            border-color: white;
+            box-shadow: 0 0 10px rgba(255, 255, 255, 0.5);
+        }
+
+        /* Rainbow Button for Custom Color */
+        .swatch.rainbow {
+            background: linear-gradient(135deg, #ff0000, #ff7f00, #ffff00, #00ff00, #0000ff, #4b0082, #9400d3);
+            position: relative;
+        }
+
+        /* Hidden Color Input */
+        #colorInput {
+            position: absolute;
+            opacity: 0;
+            width: 100%;
+            height: 100%;
+            top: 0;
+            left: 0;
+        }
+
+        .toolbar {
+            height: 70px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 0 20px;
+        }
+
+        .tool-group {
+            display: flex;
+            gap: 8px;
+            background: rgba(255, 255, 255, 0.1);
+            padding: 4px;
+            border-radius: 12px;
+        }
+
+        .btn-tool {
+            width: 44px;
+            height: 44px;
+            border: none;
+            background: none;
+            border-radius: 8px;
+            color: rgba(255, 255, 255, 0.6);
+            font-size: 20px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .btn-tool.active {
+            background: white;
+            color: #667eea;
+        }
+
+        .btn-zoom {
             width: 40px;
             height: 40px;
-            border-radius: 8px;
-            background: rgba(0, 0, 0, 0.7);
             border: none;
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 50%;
             color: white;
-            font-size: 20px;
-            cursor: pointer;
+            font-size: 18px;
+            margin-left: 4px;
         }
 
-        /* Mode indicator */
-        .mode-indicator {
-            position: absolute;
-            top: 12px;
-            left: 12px;
-            padding: 6px 12px;
-            border-radius: 16px;
-            background: rgba(0, 0, 0, 0.7);
-            font-size: 11px;
+        .btn-zoom:active {
+            background: rgba(255, 255, 255, 0.2);
+        }
+
+        .btn-zoom.active {
+            background: #4CAF50;
+            color: white;
+        }
+
+        /* Debug Console - HIDDEN */
+        #debugConsole {
+            display: none !important;
         }
     </style>
 </head>
 
 <body>
+
     <div class="container">
-        <!-- Top toolbar -->
-        <div class="toolbar">
+        <div class="top-bar">
             <div class="view-toggle">
-                <button class="toggle-btn active" id="btn2D" onclick="switchView('2d')">✏️ 2D Canvas</button>
-                <button class="toggle-btn" id="btn3D" onclick="switchView('3d')">👤 3D Preview</button>
+                <button class="toggle-btn active" id="tab2d" onclick="setMode('2d')">🎨 2D Canvas</button>
+                <button class="toggle-btn" id="tab3d" onclick="setMode('3d')">🧊 3D Preview</button>
             </div>
         </div>
 
-        <!-- Main content -->
+        <!-- Debug Console -->
+        <div id="debugConsole">Debugging...</div>
+
         <div class="content">
-            <!-- Left sidebar -->
-            <div class="left-sidebar">
-                <button class="tool-btn active" data-tool="pencil" onclick="selectTool('pencil')">
-                    <div class="tool-icon">✏️</div>
-                    <div>Draw</div>
-                </button>
-                <button class="tool-btn" data-tool="eraser" onclick="selectTool('eraser')">
-                    <div class="tool-icon">🧹</div>
-                    <div>Erase</div>
-                </button>
-                <button class="tool-btn" data-tool="fill" onclick="selectTool('fill')">
-                    <div class="tool-icon">🎨</div>
-                    <div>Fill</div>
-                </button>
-                <button class="tool-btn" data-tool="picker" onclick="selectTool('picker')">
-                    <div class="tool-icon">💉</div>
-                    <div>Pick</div>
-                </button>
+            <!-- 2D View -->
+            <div id="view2d">
+                <div class="canvas-wrapper" id="canvasWrapper">
+                    <canvas id="gridCanvas"></canvas>
+                    <canvas id="drawCanvas"></canvas>
+                </div>
+                <div class="mode-pill" id="modeLabel">✏️ Draw Mode</div>
             </div>
 
-            <!-- Canvas area -->
-            <div class="canvas-area">
-                <!-- 2D Canvas -->
-                <div id="view2d">
-                    <canvas id="canvas2d"></canvas>
-                    <div class="mode-indicator" id="mode2d">✏️ Draw Mode</div>
-                    <div class="zoom-controls">
-                        <button class="zoom-btn" onclick="zoom(1.5)">+</button>
-                        <button class="zoom-btn" onclick="zoom(0.67)">−</button>
-                        <button class="zoom-btn" onclick="resetZoom()">⊙</button>
-                    </div>
-                </div>
+            <!-- 3D View -->
+            <div id="view3d" class="hidden">
+                <canvas id="viewer3d"></canvas>
+                <div class="mode-pill">Use one finger to rotate</div>
+            </div>
+        </div>
 
-                <!-- 3D Viewer -->
-                <div id="view3d" class="hidden">
-                    <canvas id="viewer3d"></canvas>
-                    <div class="mode-indicator" id="mode3d">🔄 Rotate Mode</div>
-                    <div class="zoom-controls">
-                        <button class="zoom-btn" onclick="toggle3DDrawMode()"
-                            style="width: auto; padding: 8px 12px; font-size: 11px;">
-                            ✏️ Draw
-                        </button>
-                    </div>
+        <div class="controls-area">
+            <!-- Color Bar -->
+            <div class="color-bar">
+                <div class="colors-scroll" id="colorPalette">
+                    <!-- Injected via JS -->
                 </div>
             </div>
 
-            <!-- Right sidebar -->
-            <div class="right-sidebar" id="colorPalette"></div>
+            <!-- Toolbar -->
+            <div class="toolbar">
+                <div class="tool-group">
+                    <button class="btn-tool active" onclick="setTool('pencil')" id="btnPencil">✏️</button>
+                    <button class="btn-tool" onclick="setTool('eraser')" id="btnEraser">🧹</button>
+                    <button class="btn-tool rainbow-btn" onclick="document.getElementById('colorInput').click()"
+                        id="btnRainbow">🌈</button>
+                    <input type="color" id="colorInput" onchange="setColor(this.value)"
+                        style="position:absolute;opacity:0;pointer-events:none;">
+                </div>
+
+                <div style="display: flex; align-items: center;">
+                    <button class="btn-zoom" onclick="zoomIdx(-1)">-</button>
+                    <button class="btn-zoom" onclick="zoomIdx(1)">+</button>
+                    <button class="btn-zoom" onclick="resetView()">⊙</button>
+                    <button class="btn-zoom" id="btnPan" onclick="togglePan()">✋</button>
+                </div>
+            </div>
         </div>
     </div>
 
     <script>
-        // State
-        let skinCanvas = null;
-        let ctx = null;
-        let viewer = null;
-        let currentTool = 'pencil';
-        let currentColor = '#FF0000';
-        let painting = false;
-        let scale = 1.0;
-        let offsetX = 0;
-        let offsetY = 0;
-        let lastX = null;
-        let lastY = null;
-        let is3DDrawMode = false;
-        let painting3D = false;
+        // Utils
+        function log(msg) {
+            console.log(msg);
+        }
+        window.onerror = function (msg, url, line) {
+            console.error("JS Error: " + msg + " line " + line);
+        };
 
-        // Make canvas responsive to screen size
-        const CANVAS_SIZE = Math.min(window.innerWidth - 140, 400); // Account for sidebars (60px each + padding)
         const SKIN_SIZE = 64;
-        const PIXEL_SIZE = CANVAS_SIZE / SKIN_SIZE;
+        const DEFAULT_COLORS = ['#ef5350', '#ab47bc', '#5c6bc0', '#29b6f6', '#26a69a', '#9ccc65', '#ffca28', '#ffa726', '#8d6e63', '#212121', '#ffffff'];
+        const BASE64_STEVE = "iVBORw0KGgoAAAANSUhEUgAAAEAAAABACAYAAACqaXHeAAAFDUlEQVR42u2aT0wcVRzHf7O7lJYqtCDQ2gcTicbE1IQUY6KYSExIfDCTi4n2wIsJ1YPhQvRgsDHRmBgT7YmnJqY81JMmJt408c9qYhQRS2lLaVNsC8u/2d3xNzO7O8vO/N97s4v7JpubzLyZ9/283/u935uZjI2NjeA9HyLi8Xg8Ho/H4/F4vD7vW15e5tlslsnJSbLZbO//2aX/3/X19eX9wsICg4OD9/0cAB8APgB8APgA8AHgA8AHgA8AHwA+AHwA+ADwAeADwAeADwAfAD4APAB4APAB4APAB+gCj6A3+8nFArR1NREa2srnZ2ddHZ24vf7iUQi1NbW0tTUxPz8/F19siyLjY0NlpaWKBQKd4wlk0my2SzJZJJsNsuFCxdIJpP39AmFQnR1ddHb20tHRwdtbW3U1dURUQd5B/f393nmmWd4/fXXya/k+eKzL/n2u2/uGEsmkySTSZavLlMsFu/pU1tby9DQEIMDg/T39z/Q54Xnn+fFl17k5RefJ9wV5pOPP+KTj/68YywWi5FMJvn1t19va9ze3ua5555jZGSExx9//IE9W1tbdHZ20tnZSSAQIJvN8tlnn/HRRx/dMba2tsbS0hLhcJi1tbW/9AmFQgwNDTE8PEx/f/8DfcLhMK2trbS2trK8vMznX3zO448/fvtYIpEgGo3y6aef/qVPd3c3Ivt/R/b/9/b2Eo1GefNPN2/f+62trad48cUXmZqaIhaL3TGWy+V46aWXeOuttxgbG7ujT11dHR0dHUQikQf2tLS0AFBXV8fa2hqvv/767Xv/4YcfsrS0xOTkJD/88MOdY4lEgmQyyfT0NMlksqI+wWCQvr4+BgYGqK+vv2/PxsYG6+vrrK2tkU6nGRsbu33vP/74Y0ZHR3n11Vd57bXX7hxLJBIkEgleffVVkslkrT41NTW0trbS1tZ2357V1VXS6TSZTIaFhQV+++232/d+cnKSSCTC6Ogozz///J1jiUSCaDTK5OQkX3zxxV19qqurCYfDBIPB+//wr6+TzWYpFArMzMzcsff5fJ5oNMr4+DgTExN3jMViMWKxGK+99hqffvpprT7V1dWEw2GCwSAtLS339MlkMqTTaVZXV/ntt9/u2Pv8/DwjIyOMjY0xNTV1x9ja2hqxWIzR0VFisRitrb/3qampIRQKEQwG/9YnmUxSKBSYnJy8Y+/z+TyTk5OMjY0xOTl5x1g8Huf1119nbGyMUCj0wJ66ujoiKnt/f/+9fTY3N8lms6TTaeRyufv2/vvvv0xMTDA+Ps7MzMwdY6lUimg0Ots5OAA+AHwA+ADwAeADwAeADwAeADwAfAD4APAB8APgA8AHgA8AHwA+ADwAeADwAeADwAeADwAeADwAeADwAeADwAeADwAeADwAeADwAeADwAeADwAeADwAeADwAeADwAeADwAeADwAeADwAeAD/B/AP4G2i7fC27705gAAAAASUVORK5CYII=";
 
-        // Color palette
-        const colors = [
-            '#FF0000', '#FF7F00', '#FFFF00', '#00FF00', '#0000FF',
-            '#4B0082', '#8B4513', '#000000', '#FFFFFF', '#808080'
-        ];
+        let state = {
+            mode: '2d',
+            tool: 'pencil',
+            color: '#ef5350',
+            scale: 1.0,
+            pan: { x: 0, y: 0 },
+            isPanMode: false,
+            pixelSize: 0,
+            canvasSize: 0
+        };
 
-        // Initialize
+        let viewer;
+        let gridCtx, drawCtx;
+        let isDrawing = false;
+        let isPanning = false;
+        let lastPoint = null;
+        let startPan = { x: 0, y: 0 };
+
+        const els = {
+            gridCanvas: document.getElementById('gridCanvas'),
+            drawCanvas: document.getElementById('drawCanvas'),
+            canvasWrapper: document.getElementById('canvasWrapper'),
+            colorPalette: document.getElementById('colorPalette'),
+            modeLabel: document.getElementById('modeLabel'),
+        };
+
         function init() {
-            skinCanvas = document.getElementById('canvas2d');
-            skinCanvas.width = CANVAS_SIZE;
-            skinCanvas.height = CANVAS_SIZE;
-            ctx = skinCanvas.getContext('2d');
+            try {
+                const container = document.querySelector('.content');
+                if (container.clientWidth === 0) {
+                    setTimeout(init, 100);
+                    return;
+                }
 
-            // Fill with default gray
-            ctx.fillStyle = '#C8C8C8';
-            ctx.fillRect(0, 0, CANVAS_SIZE, CANVAS_SIZE);
-            drawGrid();
+                const size = Math.min(container.offsetWidth, container.offsetHeight) - 40;
+                state.canvasSize = size;
+                state.pixelSize = size / SKIN_SIZE;
 
-            // Setup color palette
-            const palette = document.getElementById('colorPalette');
-            colors.forEach((color, i) => {
-                const swatch = document.createElement('div');
-                swatch.className = 'color-swatch' + (i === 0 ? ' active' : '');
-                swatch.style.backgroundColor = color;
-                swatch.onclick = () => selectColor(color, swatch);
-                palette.appendChild(swatch);
-            });
+                els.canvasWrapper.style.width = size + 'px';
+                els.canvasWrapper.style.height = size + 'px';
 
-            // Setup canvas events
-            skinCanvas.addEventListener('mousedown', onPointerDown);
-            skinCanvas.addEventListener('mousemove', onPointerMove);
-            skinCanvas.addEventListener('mouseup', onPointerUp);
-            skinCanvas.addEventListener('touchstart', onPointerDown, { passive: false });
-            skinCanvas.addEventListener('touchmove', onPointerMove, { passive: false });
-            skinCanvas.addEventListener('touchend', onPointerUp);
+                els.gridCanvas.width = size;
+                els.gridCanvas.height = size;
+                els.drawCanvas.width = size;
+                els.drawCanvas.height = size;
 
-            // Initialize 3D viewer
-            init3D();
+                gridCtx = els.gridCanvas.getContext('2d');
+                drawCtx = els.drawCanvas.getContext('2d');
+                drawCtx.imageSmoothingEnabled = false;
+
+                drawGrid();
+                renderColors();
+
+                els.drawCanvas.addEventListener('pointerdown', onDown);
+                window.addEventListener('pointermove', onMove);
+                window.addEventListener('pointerup', onUp);
+
+                log('2D Canvas initialized');
+
+                // Try to init 3D safely
+                setTimeout(init3D, 500);
+            } catch (e) {
+                log('Init Error: ' + e.message);
+            }
         }
 
-        function init3D() {
-            const container = document.querySelector('.canvas-area');
-            const maxWidth = Math.min(container.clientWidth - 40, 350);
-            const maxHeight = Math.min(container.clientHeight - 40, 450);
+        function renderColors() {
+            try {
+                const html = DEFAULT_COLORS.map(c =>
+                    `<div class="swatch ${state.color === c ? 'active' : ''}" 
+                      style="background: ${c}" 
+                      onclick="setColor('${c}')"></div>`
+                ).join('');
 
-            viewer = new skinview3d.SkinViewer({
-                canvas: document.getElementById('viewer3d'),
-                width: maxWidth,
-                height: maxHeight,
-                skin: getDataURL()
+                els.colorPalette.innerHTML = html;
+                log('Colors rendered');
+            } catch (e) {
+                log('Error rendering colors: ' + e.message);
+            }
+        }
+
+        function setColor(color) {
+            state.color = color;
+            // Don't re-render entire palette to keep focus
+            // just update active class if it matches
+            document.querySelectorAll('.swatch').forEach(el => {
+                el.classList.remove('active');
+                // Check if the swatch's background color matches the new color
+                // This is a simple check and might not be robust for all color formats
+                if (el.style.backgroundColor === color) {
+                    el.classList.add('active');
+                }
             });
-            viewer.zoom = 0.9;
-            viewer.autoRotate = false; // Manual rotation only
-            viewer.controls.enableRotate = true;
-            viewer.animation = new skinview3d.IdleAnimation();
 
-            // Setup 3D drawing events
-            const canvas3d = document.getElementById('viewer3d');
-            canvas3d.addEventListener('pointerdown', on3DPointerDown);
-            canvas3d.addEventListener('pointermove', on3DPointerMove);
-            canvas3d.addEventListener('pointerup', on3DPointerUp);
+            // Also if we picked from native, maybe update the rainbow swatch? No need.
+            setTool('pencil');
+        }
+
+        function setTool(tool) {
+            state.tool = tool;
+            document.querySelectorAll('.btn-tool').forEach(b => b.classList.remove('active'));
+            if (tool === 'pencil') document.getElementById('btnPencil').classList.add('active');
+            if (tool === 'eraser') document.getElementById('btnEraser').classList.add('active');
+
+            if (state.isPanMode) togglePan();
+        }
+
+        function setMode(mode) {
+            state.mode = mode;
+            document.getElementById('tab2d').classList.toggle('active', mode === '2d');
+            document.getElementById('tab3d').classList.toggle('active', mode === '3d');
+            document.getElementById('view2d').classList.toggle('hidden', mode !== '2d');
+            document.getElementById('view3d').classList.toggle('hidden', mode !== '3d');
+
+            if (mode === '3d') {
+                if (viewer) {
+                    const el = document.getElementById('view3d');
+                    viewer.setSize(el.clientWidth, el.clientHeight);
+                    update3DSkin();
+                } else {
+                    init3D();
+                }
+            }
+        }
+
+        function togglePan() {
+            state.isPanMode = !state.isPanMode;
+            document.getElementById('btnPan').classList.toggle('active', state.isPanMode);
+            els.drawCanvas.style.cursor = state.isPanMode ? 'grab' : 'crosshair';
+            els.modeLabel.innerText = state.isPanMode ? '✋ Pan to Move' : '✏️ Draw Mode';
         }
 
         function drawGrid() {
-            // Minor grid
-            ctx.strokeStyle = 'rgba(255,255,255,0.15)';
-            ctx.lineWidth = 0.5;
-            for (let i = 1; i < SKIN_SIZE; i++) {
-                if (i % 8 !== 0) {
-                    ctx.beginPath();
-                    ctx.moveTo(i * PIXEL_SIZE, 0);
-                    ctx.lineTo(i * PIXEL_SIZE, CANVAS_SIZE);
-                    ctx.stroke();
-                    ctx.beginPath();
-                    ctx.moveTo(0, i * PIXEL_SIZE);
-                    ctx.lineTo(CANVAS_SIZE, i * PIXEL_SIZE);
-                    ctx.stroke();
-                }
+            gridCtx.fillStyle = '#cfd8dc';
+            gridCtx.fillRect(0, 0, state.canvasSize, state.canvasSize);
+            gridCtx.beginPath();
+            gridCtx.strokeStyle = 'rgba(255,255,255, 0.3)';
+            gridCtx.lineWidth = 1;
+            for (let i = 0; i <= SKIN_SIZE; i++) {
+                const pos = i * state.pixelSize;
+                gridCtx.moveTo(pos, 0);
+                gridCtx.lineTo(pos, state.canvasSize);
+                gridCtx.moveTo(0, pos);
+                gridCtx.lineTo(state.canvasSize, pos);
             }
-
-            // Major grid
-            ctx.strokeStyle = 'rgba(255,255,255,0.4)';
-            ctx.lineWidth = 1;
-            for (let i = 0; i <= SKIN_SIZE; i += 8) {
-                ctx.beginPath();
-                ctx.moveTo(i * PIXEL_SIZE, 0);
-                ctx.lineTo(i * PIXEL_SIZE, CANVAS_SIZE);
-                ctx.stroke();
-                ctx.beginPath();
-                ctx.moveTo(0, i * PIXEL_SIZE);
-                ctx.lineTo(CANVAS_SIZE, i * PIXEL_SIZE);
-                ctx.stroke();
-            }
+            gridCtx.stroke();
         }
 
-        function getPixelCoords(e) {
-            const rect = skinCanvas.getBoundingClientRect();
-            const clientX = e.touches ? e.touches[0].clientX : e.clientX;
-            const clientY = e.touches ? e.touches[0].clientY : e.clientY;
-            const x = Math.floor((clientX - rect.left) / PIXEL_SIZE);
-            const y = Math.floor((clientY - rect.top) / PIXEL_SIZE);
-            return { x: Math.max(0, Math.min(SKIN_SIZE - 1, x)), y: Math.max(0, Math.min(SKIN_SIZE - 1, y)) };
+        function getCoords(e) {
+            const rect = els.drawCanvas.getBoundingClientRect();
+            const x = Math.floor((e.clientX - rect.left) / (state.pixelSize * state.scale));
+            const y = Math.floor((e.clientY - rect.top) / (state.pixelSize * state.scale));
+            return { x, y };
         }
 
-        function paintPixel(x, y) {
-            ctx.fillStyle = currentTool === 'eraser' ? '#C8C8C8' : currentColor;
-            ctx.fillRect(x * PIXEL_SIZE, y * PIXEL_SIZE, PIXEL_SIZE, PIXEL_SIZE);
-        }
+        function onDown(e) {
+            if (state.mode !== '2d') return;
 
-        function onPointerDown(e) {
-            e.preventDefault();
-            painting = true;
-            const { x, y } = getPixelCoords(e);
-
-            if (currentTool === 'picker') {
-                const pixel = ctx.getImageData(x * PIXEL_SIZE + 1, y * PIXEL_SIZE + 1, 1, 1).data;
-                const hex = '#' + ((1 << 24) + (pixel[0] << 16) + (pixel[1] << 8) + pixel[2]).toString(16).slice(1);
-                selectColor(hex);
-                painting = false;
+            if (state.isPanMode) {
+                isPanning = true;
+                startPan = { x: e.clientX - state.pan.x, y: e.clientY - state.pan.y };
+                els.drawCanvas.style.cursor = 'grabbing';
                 return;
             }
 
-            if (currentTool === 'fill') {
-                floodFill(x, y);
-                drawGrid();
-                notifyFlutter();
-                painting = false;
+            const { x, y } = getCoords(e);
+            isDrawing = true;
+            paint(x, y);
+            lastPoint = { x, y };
+        }
+
+        function onMove(e) {
+            if (isPanning) {
+                e.preventDefault();
+                state.pan.x = e.clientX - startPan.x;
+                state.pan.y = e.clientY - startPan.y;
+                applyTransform();
                 return;
             }
 
-            lastX = x;
-            lastY = y;
-            paintPixel(x, y);
-        }
-
-        function onPointerMove(e) {
-            if (!painting || currentTool === 'picker' || currentTool === 'fill') return;
+            if (!isDrawing) return;
             e.preventDefault();
-            const { x, y } = getPixelCoords(e);
-
-            if (lastX !== null && lastY !== null) {
-                drawLine(lastX, lastY, x, y);
-            }
-            lastX = x;
-            lastY = y;
+            const { x, y } = getCoords(e);
+            if (lastPoint) line(lastPoint.x, lastPoint.y, x, y);
+            lastPoint = { x, y };
         }
 
-        function onPointerUp(e) {
-            if (painting) {
-                painting = false;
-                lastX = null;
-                lastY = null;
-                drawGrid();
-                notifyFlutter();
+        function onUp() {
+            isDrawing = false;
+            if (isPanning) {
+                isPanning = false;
+                if (state.isPanMode) els.drawCanvas.style.cursor = 'grab';
+            }
+            lastPoint = null;
+            if (!isPanning && state.mode === '3d') update3DSkin();
+        }
+
+        function pickColor(x, y) {
+            const px = Math.floor(x * state.pixelSize + state.pixelSize / 2);
+            const py = Math.floor(y * state.pixelSize + state.pixelSize / 2);
+            const p = drawCtx.getImageData(px, py, 1, 1).data;
+            if (p[3] > 0) {
+                const hex = "#" + ((1 << 24) + (p[0] << 16) + (p[1] << 8) + p[2]).toString(16).slice(1);
+                setColor(hex);
             }
         }
 
-        function drawLine(x0, y0, x1, y1) {
+        function paint(x, y) {
+            if (x < 0 || x >= SKIN_SIZE || y < 0 || y >= SKIN_SIZE) return;
+            if (state.tool === 'eraser') {
+                drawCtx.clearRect(x * state.pixelSize, y * state.pixelSize, state.pixelSize, state.pixelSize);
+            } else if (state.tool === 'pencil') {
+                drawCtx.fillStyle = state.color;
+                drawCtx.fillRect(x * state.pixelSize, y * state.pixelSize, state.pixelSize, state.pixelSize);
+            }
+        }
+
+        function line(x0, y0, x1, y1) {
             const dx = Math.abs(x1 - x0);
             const dy = Math.abs(y1 - y0);
-            const sx = x0 < x1 ? 1 : -1;
-            const sy = y0 < y1 ? 1 : -1;
+            const sx = (x0 < x1) ? 1 : -1;
+            const sy = (y0 < y1) ? 1 : -1;
             let err = dx - dy;
-
             while (true) {
-                paintPixel(x0, y0);
-                if (x0 === x1 && y0 === y1) break;
+                paint(x0, y0);
+                if ((x0 === x1) && (y0 === y1)) break;
                 const e2 = 2 * err;
                 if (e2 > -dy) { err -= dy; x0 += sx; }
                 if (e2 < dx) { err += dx; y0 += sy; }
             }
         }
 
-        function floodFill(x, y) {
-            const imageData = ctx.getImageData(0, 0, CANVAS_SIZE, CANVAS_SIZE);
-            const data = imageData.data;
-            const targetColor = getColorAt(data, x * PIXEL_SIZE, y * PIXEL_SIZE);
-            const fillColor = hexToRgb(currentTool === 'eraser' ? '#C8C8C8' : currentColor);
+        function zoomIdx(dir) {
+            const levels = [0.5, 0.75, 1.0, 1.5, 2.0, 3.0, 4.0];
+            let curr = state.scale;
+            let idx = 2; // default
+            let minDiff = 100;
+            levels.forEach((l, i) => { if (Math.abs(l - curr) < minDiff) { minDiff = Math.abs(l - curr); idx = i; } });
+            idx = Math.max(0, Math.min(levels.length - 1, idx + dir));
+            state.scale = levels[idx];
+            applyTransform();
+        }
 
-            if (colorsEqual(targetColor, fillColor)) return;
+        function resetView() {
+            state.scale = 1.0;
+            state.pan = { x: 0, y: 0 };
+            applyTransform();
+        }
 
-            const stack = [{ x: x * PIXEL_SIZE, y: y * PIXEL_SIZE }];
+        function applyTransform() {
+            els.canvasWrapper.style.transform = `translate(${state.pan.x}px, ${state.pan.y}px) scale(${state.scale})`;
+        }
 
-            while (stack.length) {
-                const { x: px, y: py } = stack.pop();
-                if (px < 0 || px >= CANVAS_SIZE || py < 0 || py >= CANVAS_SIZE) continue;
+        function init3D() {
+            log('>>> init3D called');
 
-                const idx = (py * CANVAS_SIZE + px) * 4;
-                if (!colorsEqual(getColorAt(data, px, py), targetColor)) continue;
-
-                data[idx] = fillColor.r;
-                data[idx + 1] = fillColor.g;
-                data[idx + 2] = fillColor.b;
-                data[idx + 3] = 255;
-
-                stack.push({ x: px + 1, y: py }, { x: px - 1, y: py }, { x: px, y: py + 1 }, { x: px, y: py - 1 });
+            log('Checking skinview3d library...');
+            if (typeof skinview3d === 'undefined') {
+                log("ERROR: skinview3d library not loaded!");
+                return;
             }
+            log('✓ skinview3d library found');
 
-            ctx.putImageData(imageData, 0, 0);
-        }
+            log('Getting viewer3d canvas element...');
+            const el = document.getElementById('viewer3d');
+            if (!el) {
+                log('ERROR: viewer3d canvas not found!');
+                return;
+            }
+            log('✓ viewer3d canvas found');
 
-        function getColorAt(data, x, y) {
-            const idx = (y * CANVAS_SIZE + x) * 4;
-            return { r: data[idx], g: data[idx + 1], b: data[idx + 2] };
-        }
+            log('Getting view3d container...');
+            const container = document.getElementById('view3d');
+            if (!container) {
+                log('ERROR: view3d container not found!');
+                return;
+            }
+            const w = container.clientWidth || 300;
+            const h = container.clientHeight || 400;
+            log(`✓ Container size: ${w}x${h}`);
 
-        function hexToRgb(hex) {
-            const result = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex);
-            return result ? { r: parseInt(result[1], 16), g: parseInt(result[2], 16), b: parseInt(result[3], 16) } : { r: 0, g: 0, b: 0 };
-        }
+            try {
+                log(`Creating SkinViewer instance...`);
+                viewer = new skinview3d.SkinViewer({
+                    canvas: el,
+                    width: w,
+                    height: h,
+                });
+                log('✓ SkinViewer created');
 
-        function colorsEqual(c1, c2) {
-            return c1.r === c2.r && c1.g === c2.g && c1.b === c2.b;
-        }
+                log('Setting zoom to 0.8...');
+                viewer.zoom = 0.8;
+                log('✓ Zoom set');
 
-        function zoom(factor) {
-            scale = Math.max(0.5, Math.min(5, scale * factor));
-            skinCanvas.style.transform = `scale(${scale})`;
-        }
+                log('Setting IdleAnimation...');
+                viewer.animation = new skinview3d.IdleAnimation();
+                log('✓ Animation set');
 
-        function resetZoom() {
-            scale = 1;
-            skinCanvas.style.transform = 'scale(1)';
-        }
+                log('Calling update3DSkin...');
+                update3DSkin();
+                log('✓ init3D complete');
 
-        function selectTool(tool) {
-            currentTool = tool;
-            document.querySelectorAll('.tool-btn').forEach(btn => btn.classList.remove('active'));
-            document.querySelector(`[data-tool="${tool}"]`).classList.add('active');
-            document.getElementById('mode2d').textContent =
-                tool === 'pencil' ? '✏️ Draw Mode' :
-                    tool === 'eraser' ? '🧹 Erase Mode' :
-                        tool === 'fill' ? '🎨 Fill Mode' : '💉 Pick Color';
-        }
-
-        function selectColor(color, element) {
-            currentColor = color;
-            document.querySelectorAll('.color-swatch').forEach(s => s.classList.remove('active'));
-            if (element) element.classList.add('active');
-        }
-
-        function switchView(view) {
-            const is3D = view === '3d';
-            document.getElementById('btn2D').classList.toggle('active', !is3D);
-            document.getElementById('btn3D').classList.toggle('active', is3D);
-            document.getElementById('view2d').classList.toggle('hidden', is3D);
-            document.getElementById('view3d').classList.toggle('hidden', !is3D);
-
-            if (is3D && viewer) {
-                viewer.loadSkin(getDataURL());
-                updateMode3D();
+            } catch (e) {
+                log(`ERROR in init3D: ${e.name}: ${e.message}`);
+                log(`Stack: ${e.stack}`);
             }
         }
 
-        function toggle3DDrawMode() {
-            is3DDrawMode = !is3DDrawMode;
-            updateMode3D();
-        }
+        function update3DSkin() {
+            log('>>> update3DSkin called');
 
-        function updateMode3D() {
-            if (!viewer) return;
-            viewer.controls.enableRotate = !is3DDrawMode;
-            const modeText = is3DDrawMode ? '✏️ Draw on Model' : '🔄 Rotate Mode';
-            document.getElementById('mode3d').textContent = modeText;
-            document.getElementById('mode3d').style.background = is3DDrawMode ? 'rgba(76, 175, 80, 0.8)' : 'rgba(0, 0, 0, 0.7)';
-        }
-
-        function on3DPointerDown(e) {
-            if (!is3DDrawMode) return;
-            e.preventDefault();
-            painting3D = true;
-            paint3D(e);
-        }
-
-        function on3DPointerMove(e) {
-            if (!is3DDrawMode || !painting3D) return;
-            e.preventDefault();
-            paint3D(e);
-        }
-
-        function on3DPointerUp(e) {
-            if (painting3D) {
-                painting3D = false;
-                drawGrid();
-                notifyFlutter();
+            if (!viewer) {
+                log('ERROR: viewer is null/undefined');
+                return;
             }
-        }
+            log('✓ Viewer exists');
 
-        function paint3D(e) {
-            const canvas = document.getElementById('viewer3d');
-            const rect = canvas.getBoundingClientRect();
-            const x = e.clientX - rect.left;
-            const y = e.clientY - rect.top;
+            try {
+                log('Creating temp canvas...');
+                const temp = document.createElement('canvas');
+                temp.width = 64;
+                temp.height = 64;
+                log('✓ Temp canvas created: 64x64');
 
-            // Use Three.js raycasting
-            if (!viewer || !viewer.scene || !viewer.camera) return;
-
-            // Get THREE from skinview3d
-            const THREE = window.skinview3d.THREE || window.THREE;
-            if (!THREE) return;
-
-            // Normalized device coordinates
-            const mouse = new THREE.Vector2(
-                (x / rect.width) * 2 - 1,
-                -(y / rect.height) * 2 + 1
-            );
-
-            // Create raycaster
-            const raycaster = new THREE.Raycaster();
-            raycaster.setFromCamera(mouse, viewer.camera);
-
-            // Get all meshes from the player
-            const meshes = [];
-            viewer.playerObject.traverse((child) => {
-                if (child.isMesh && child.material) {
-                    meshes.push(child);
+                log('Getting 2d context...');
+                const ctx = temp.getContext('2d');
+                if (!ctx) {
+                    log('ERROR: Failed to get 2d context');
+                    return;
                 }
-            });
+                log('✓ Context acquired');
 
-            // Raycast
-            const intersects = raycaster.intersectObjects(meshes);
+                // Fill with a solid skin tone color as base
+                log('Filling with default skin color...');
+                ctx.fillStyle = '#ECCBB9'; // Light tan skin color
+                ctx.fillRect(0, 0, 64, 64);
+                log('✓ Base color filled');
 
-            if (intersects.length > 0) {
-                const hit = intersects[0];
-                const uv = hit.uv;
+                log(`Drawing user canvas (${state.canvasSize}x${state.canvasSize})...`);
+                ctx.drawImage(els.drawCanvas, 0, 0, state.canvasSize, state.canvasSize, 0, 0, 64, 64);
+                log('✓ User drawing overlaid');
 
-                if (uv) {
-                    // Map UV to 64x64 texture
-                    const px = Math.floor(uv.x * SKIN_SIZE);
-                    const py = Math.floor((1 - uv.y) * SKIN_SIZE); // Flip Y
+                log('Converting to data URL...');
+                const dataUrl = temp.toDataURL();
+                log(`✓ Data URL created (length: ${dataUrl.length})`);
 
-                    if (px >= 0 && px < SKIN_SIZE && py >= 0 && py < SKIN_SIZE) {
-                        ctx.fillStyle = currentTool === 'eraser' ? '#C8C8C8' : currentColor;
-                        ctx.fillRect(px * PIXEL_SIZE, py * PIXEL_SIZE, PIXEL_SIZE, PIXEL_SIZE);
-                        viewer.loadSkin(getDataURL());
-                    }
-                }
+                log('Loading skin to viewer...');
+                viewer.loadSkin(dataUrl);
+                log('✓ Skin loaded to viewer!');
+
+            } catch (e) {
+                log(`ERROR in update3DSkin: ${e.name}: ${e.message}`);
+                log(`Stack: ${e.stack}`);
             }
         }
 
-        function getDataURL() {
-            const temp = document.createElement('canvas');
-            temp.width = SKIN_SIZE;
-            temp.height = SKIN_SIZE;
-            temp.getContext('2d').drawImage(skinCanvas, 0, 0, CANVAS_SIZE, CANVAS_SIZE, 0, 0, SKIN_SIZE, SKIN_SIZE);
-            return temp.toDataURL();
-        }
-
-        function notifyFlutter() {
-            if (window.FlutterChannel) {
-                const dataURL = getDataURL();
-                window.FlutterChannel.postMessage(JSON.stringify({
-                    type: 'skin_update',
-                    data: dataURL.split(',')[1]
-                }));
-            }
-        }
-
+        // Import texture from gallery (called from Flutter)
         function loadSkin(base64Data) {
-            const img = new Image();
-            img.onload = () => {
-                ctx.clearRect(0, 0, CANVAS_SIZE, CANVAS_SIZE);
-                ctx.drawImage(img, 0, 0, SKIN_SIZE, SKIN_SIZE, 0, 0, CANVAS_SIZE, CANVAS_SIZE);
-                drawGrid();
-                if (viewer) viewer.loadSkin(getDataURL());
-            };
-            img.src = 'data:image/png;base64,' + base64Data;
+            try {
+                log('Loading skin from gallery...');
+                const img = new Image();
+                img.onload = () => {
+                    // Clear current canvas
+                    drawCtx.clearRect(0, 0, state.canvasSize, state.canvasSize);
+
+                    // Draw imported image scaled to canvas
+                    drawCtx.drawImage(img, 0, 0, state.canvasSize, state.canvasSize);
+                    log('Skin loaded successfully');
+
+                    // Update 3D
+                    if (state.mode === '3d') {
+                        update3DSkin();
+                    }
+                };
+                img.onerror = () => {
+                    console.error('Failed to load skin image');
+                };
+                img.src = 'data:image/png;base64,' + base64Data;
+            } catch (e) {
+                console.error('Error in loadSkin:', e);
+            }
         }
 
-        // Expose to Flutter
-        window.loadSkin = loadSkin;
+        // Save current canvas as PNG with white background
+        function saveImage() {
+            try {
+                log('Saving image...');
+                const temp = document.createElement('canvas');
+                temp.width = 64;
+                temp.height = 64;
+                const ctx = temp.getContext('2d');
 
-        // Initialize on load
-        if (document.readyState === 'loading') {
-            document.addEventListener('DOMContentLoaded', init);
-        } else {
-            init();
+                // Fill with WHITE background (no transparency)
+                ctx.fillStyle = '#FFFFFF';
+                ctx.fillRect(0, 0, 64, 64);
+
+                // Draw user's drawing on top
+                ctx.drawImage(els.drawCanvas, 0, 0, state.canvasSize, state.canvasSize, 0, 0, 64, 64);
+
+                // Return as base64 PNG
+                const dataUrl = temp.toDataURL('image/png');
+                return dataUrl.split(',')[1]; // Return only base64 part
+            } catch (e) {
+                console.error('Error saving image:', e);
+                return null;
+            }
         }
+
+        window.addEventListener('load', init);
+        window.addEventListener('resize', () => { /* optional */ });
+
     </script>
 </body>
 
