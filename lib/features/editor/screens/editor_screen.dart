@@ -38,7 +38,7 @@ class _EditorScreenState extends State<EditorScreen> {
         NavigationDelegate(
           onPageFinished: (url) {
             setState(() => _isLoaded = true);
-            _loadSkinToWeb();
+            // DON'T auto-load skin on page load - let canvas start empty!
           },
           onWebResourceError: (error) {
             debugPrint('Web Resource Error: ${error.description}');
@@ -68,8 +68,14 @@ class _EditorScreenState extends State<EditorScreen> {
     if (!_isLoaded) return;
     
     final provider = context.read<SkinProvider>();
-    if (provider.skinImage == null) return;
     
+    // If skinImage is null, don't load anything - canvas stays empty
+    if (provider.skinImage == null) {
+      debugPrint('No skin to load (skinImage is null)');
+      return;
+    }
+    
+    debugPrint('Loading skin to web...');
     final pngBytes = img.encodePng(provider.skinImage!);
     final base64Data = base64Encode(pngBytes);
     
@@ -79,7 +85,7 @@ class _EditorScreenState extends State<EditorScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFF1a2a3a),
+      // NO backgroundColor - let WebView's HTML background show through!
       appBar: AppBar(
         backgroundColor: const Color(0xFF0d1a26),
         title: const Text('Skin Editor'),

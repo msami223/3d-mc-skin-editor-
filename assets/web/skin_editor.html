@@ -23,6 +23,8 @@
             font-family: system-ui, sans-serif;
             color: white;
             touch-action: none;
+            -webkit-user-select: none;
+            user-select: none;
         }
 
         .container {
@@ -97,7 +99,7 @@
             position: relative;
             box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
             border-radius: 4px;
-            background: #2a2a2a;
+            /* NO background - must be transparent! */
         }
 
         #gridCanvas,
@@ -167,6 +169,7 @@
             border-radius: 50%;
             border: 2px solid rgba(255, 255, 255, 0.2);
             flex-shrink: 0;
+            transition: transform 0.2s, border-color 0.2s;
         }
 
         .swatch.active {
@@ -175,20 +178,10 @@
             box-shadow: 0 0 10px rgba(255, 255, 255, 0.5);
         }
 
-        /* Rainbow Button for Custom Color */
+        /* Rainbow Button */
         .swatch.rainbow {
             background: linear-gradient(135deg, #ff0000, #ff7f00, #ffff00, #00ff00, #0000ff, #4b0082, #9400d3);
             position: relative;
-        }
-
-        /* Hidden Color Input */
-        #colorInput {
-            position: absolute;
-            opacity: 0;
-            width: 100%;
-            height: 100%;
-            top: 0;
-            left: 0;
         }
 
         .toolbar {
@@ -218,11 +211,21 @@
             display: flex;
             align-items: center;
             justify-content: center;
+            transition: all 0.2s;
         }
 
         .btn-tool.active {
             background: white;
             color: #667eea;
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+        }
+
+        /* Pencil button shows selected color when active - override .active background */
+        .btn-tool.active.pencil-colored {
+            background: var(--pencil-color, white) !important;
+            border: 2px solid white !important;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
         }
 
         .btn-zoom {
@@ -245,6 +248,135 @@
             color: white;
         }
 
+        /* Modern Color Picker Modal */
+        .color-picker-modal {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.6);
+            backdrop-filter: blur(5px);
+            z-index: 200;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity 0.3s;
+        }
+
+        .color-picker-modal.visible {
+            opacity: 1;
+            pointer-events: auto;
+        }
+
+        .picker-card {
+            background: #1e1e1e;
+            width: 300px;
+            border-radius: 20px;
+            padding: 20px;
+            box-shadow: 0 20px 50px rgba(0, 0, 0, 0.5);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .picker-header {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 15px;
+            color: white;
+            font-weight: 600;
+        }
+
+        .picker-close {
+            background: none;
+            border: none;
+            color: rgba(255, 255, 255, 0.5);
+            font-size: 20px;
+        }
+
+        .sat-val-box {
+            width: 100%;
+            height: 200px;
+            background: red;
+            /* dynamic */
+            border-radius: 10px;
+            position: relative;
+            margin-bottom: 15px;
+            overflow: hidden;
+            touch-action: none;
+        }
+
+        .sat-overlay-white {
+            position: absolute;
+            inset: 0;
+            background: linear-gradient(to right, #fff, rgba(255, 255, 255, 0));
+        }
+
+        .sat-overlay-black {
+            position: absolute;
+            inset: 0;
+            background: linear-gradient(to top, #000, rgba(0, 0, 0, 0));
+        }
+
+        .picker-cursor {
+            width: 20px;
+            height: 20px;
+            border: 2px solid white;
+            border-radius: 50%;
+            position: absolute;
+            transform: translate(-50%, -50%);
+            box-shadow: 0 0 5px rgba(0, 0, 0, 0.5);
+            pointer-events: none;
+        }
+
+        .hue-slider {
+            width: 100%;
+            height: 20px;
+            border-radius: 10px;
+            background: linear-gradient(to right, red, #ff0, lime, cyan, blue, magenta, red);
+            position: relative;
+            margin-bottom: 20px;
+            touch-action: none;
+        }
+
+        .hue-thumb {
+            width: 20px;
+            height: 24px;
+            background: white;
+            border-radius: 4px;
+            position: absolute;
+            top: 50%;
+            transform: translate(-50%, -50%);
+            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.3);
+            pointer-events: none;
+        }
+
+        .picker-footer {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .preview-color {
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            border: 2px solid rgba(255, 255, 255, 0.2);
+            flex-shrink: 0;
+        }
+
+        .btn-select {
+            flex: 1;
+            background: #667eea;
+            color: white;
+            border: none;
+            padding: 10px;
+            border-radius: 10px;
+            font-weight: 600;
+            font-size: 16px;
+        }
+
         /* Debug Console - HIDDEN */
         #debugConsole {
             display: none !important;
@@ -261,9 +393,6 @@
                 <button class="toggle-btn" id="tab3d" onclick="setMode('3d')">🧊 3D Preview</button>
             </div>
         </div>
-
-        <!-- Debug Console -->
-        <div id="debugConsole">Debugging...</div>
 
         <div class="content">
             <!-- 2D View -->
@@ -295,10 +424,7 @@
                 <div class="tool-group">
                     <button class="btn-tool active" onclick="setTool('pencil')" id="btnPencil">✏️</button>
                     <button class="btn-tool" onclick="setTool('eraser')" id="btnEraser">🧹</button>
-                    <button class="btn-tool rainbow-btn" onclick="document.getElementById('colorInput').click()"
-                        id="btnRainbow">🌈</button>
-                    <input type="color" id="colorInput" onchange="setColor(this.value)"
-                        style="position:absolute;opacity:0;pointer-events:none;">
+                    <button class="btn-tool rainbow-btn" onclick="openColorPicker()" id="btnRainbow">🌈</button>
                 </div>
 
                 <div style="display: flex; align-items: center;">
@@ -311,19 +437,90 @@
         </div>
     </div>
 
+    <!-- Color Picker Modal -->
+    <div id="colorPickerModal" class="color-picker-modal">
+        <div class="picker-card">
+            <div class="picker-header">
+                <span>Select Color</span>
+                <button class="picker-close" onclick="closeColorPicker()">✕</button>
+            </div>
+
+            <div class="sat-val-box" id="svBox">
+                <div class="sat-overlay-white"></div>
+                <div class="sat-overlay-black"></div>
+                <div class="picker-cursor" id="svCursor"></div>
+            </div>
+
+            <div class="hue-slider" id="hueSlider">
+                <div class="hue-thumb" id="hueThumb"></div>
+            </div>
+
+            <div class="picker-footer">
+                <div class="preview-color" id="pickerPreview"></div>
+                <button class="btn-select" onclick="confirmColor()">Use Color</button>
+            </div>
+        </div>
+    </div>
+
     <script>
         // Utils
-        function log(msg) {
-            console.log(msg);
-        }
-        window.onerror = function (msg, url, line) {
-            console.error("JS Error: " + msg + " line " + line);
-        };
+        function log(msg) { console.log(msg); }
+        window.onerror = function (msg, url, line) { console.error("JS Error: " + msg + " line " + line); };
 
         const SKIN_SIZE = 64;
         const DEFAULT_COLORS = ['#ef5350', '#ab47bc', '#5c6bc0', '#29b6f6', '#26a69a', '#9ccc65', '#ffca28', '#ffa726', '#8d6e63', '#212121', '#ffffff'];
-        const BASE64_STEVE = "iVBORw0KGgoAAAANSUhEUgAAAEAAAABACAYAAACqaXHeAAAFDUlEQVR42u2aT0wcVRzHf7O7lJYqtCDQ2gcTicbE1IQUY6KYSExIfDCTi4n2wIsJ1YPhQvRgsDHRmBgT7YmnJqY81JMmJt408c9qYhQRS2lLaVNsC8u/2d3xNzO7O8vO/N97s4v7JpubzLyZ9/283/u935uZjI2NjeA9HyLi8Xg8Ho/H4/F4vD7vW15e5tlslsnJSbLZbO//2aX/3/X19eX9wsICg4OD9/0cAB8APgB8APgA8AHgA8AHgA8AHwA+AHwA+ADwAeADwAeADwAfAD4APAB4APAB4APAB+gCj6A3+8nFArR1NREa2srnZ2ddHZ24vf7iUQi1NbW0tTUxPz8/F19siyLjY0NlpaWKBQKd4wlk0my2SzJZJJsNsuFCxdIJpP39AmFQnR1ddHb20tHRwdtbW3U1dURUQd5B/f393nmmWd4/fXXya/k+eKzL/n2u2/uGEsmkySTSZavLlMsFu/pU1tby9DQEIMDg/T39z/Q54Xnn+fFl17k5RefJ9wV5pOPP+KTj/68YywWi5FMJvn1t19va9ze3ua5555jZGSExx9//IE9W1tbdHZ20tnZSSAQIJvN8tlnn/HRRx/dMba2tsbS0hLhcJi1tbW/9AmFQgwNDTE8PEx/f/8DfcLhMK2trbS2trK8vMznX3zO448/fvtYIpEgGo3y6aef/qVPd3c3Ivt/R/b/9/b2Eo1GefNPN2/f+62trad48cUXmZqaIhaL3TGWy+V46aWXeOuttxgbG7ujT11dHR0dHUQikQf2tLS0AFBXV8fa2hqvv/767Xv/4YcfsrS0xOTkJD/88MOdY4lEgmQyyfT0NMlksqI+wWCQvr4+BgYGqK+vv2/PxsYG6+vrrK2tkU6nGRsbu33vP/74Y0ZHR3n11Vd57bXX7hxLJBIkEgleffVVkslkrT41NTW0trbS1tZ2357V1VXS6TSZTIaFhQV+++232/d+cnKSSCTC6Ogozz///J1jiUSCaDTK5OQkX3zxxV19qqurCYfDBIPB+//wr6+TzWYpFArMzMzcsff5fJ5oNMr4+DgTExN3jMViMWKxGK+99hqffvpprT7V1dWEw2GCwSAtLS339MlkMqTTaVZXV/ntt9/u2Pv8/DwjIyOMjY0xNTV1x9ja2hqxWIzR0VFisRitrb/3qampIRQKEQwG/9YnmUxSKBSYnJy8Y+/z+TyTk5OMjY0xOTl5x1g8Huf1119nbGyMUCj0wJ66ujoiKnt/f/+9fTY3N8lms6TTaeRyufv2/vvvv0xMTDA+Ps7MzMwdY6lUimg0Ots5OAA+AHwA+ADwAeADwAeADwAeADwAfAD4APAB8APgA8AHgA8AHwA+ADwAeADwAeADwAeADwAeADwAeADwAeADwAeADwAeADwAeADwAeADwAeADwAeADwAeADwAeADwAeADwAeADwAeADwAeAD/B/AP4G2i7fC27705gAAAAASUVORK5CYII=";
 
+        // --- Color Utils ---
+        function hsvToRgb(h, s, v) {
+            let r, g, b;
+            let i = Math.floor(h * 6);
+            let f = h * 6 - i;
+            let p = v * (1 - s);
+            let q = v * (1 - f * s);
+            let t = v * (1 - (1 - f) * s);
+            switch (i % 6) {
+                case 0: r = v; g = t; b = p; break;
+                case 1: r = q; g = v; b = p; break;
+                case 2: r = p; g = v; b = t; break;
+                case 3: r = p; g = q; b = v; break;
+                case 4: r = t; g = p; b = v; break;
+                case 5: r = v; g = p; b = q; break;
+            }
+            return { r: Math.round(r * 255), g: Math.round(g * 255), b: Math.round(b * 255) };
+        }
+
+        function rgbToHex(r, g, b) {
+            return "#" + ((1 << 24) + (r << 16) + (g << 8) + b).toString(16).slice(1);
+        }
+
+        function hexToRgb(hex) {
+            let result = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex);
+            return result ? {
+                r: parseInt(result[1], 16),
+                g: parseInt(result[2], 16),
+                b: parseInt(result[3], 16)
+            } : null;
+        }
+
+        function rgbToHsv(r, g, b) {
+            r /= 255, g /= 255, b /= 255;
+            let max = Math.max(r, g, b), min = Math.min(r, g, b);
+            let h, s, v = max;
+            let d = max - min;
+            s = max === 0 ? 0 : d / max;
+            if (max === min) h = 0;
+            else {
+                switch (max) {
+                    case r: h = (g - b) / d + (g < b ? 6 : 0); break;
+                    case g: h = (b - r) / d + 2; break;
+                    case b: h = (r - g) / d + 4; break;
+                }
+                h /= 6;
+            }
+            return { h, s, v };
+        }
+
+        // --- State ---
         let state = {
             mode: '2d',
             tool: 'pencil',
@@ -342,18 +539,36 @@
         let lastPoint = null;
         let startPan = { x: 0, y: 0 };
 
+        // Color Picker State
+        let pickerState = {
+            h: 0, s: 1, v: 1,
+            isDraggingSV: false,
+            isDraggingHue: false
+        };
+
         const els = {
             gridCanvas: document.getElementById('gridCanvas'),
             drawCanvas: document.getElementById('drawCanvas'),
             canvasWrapper: document.getElementById('canvasWrapper'),
             colorPalette: document.getElementById('colorPalette'),
             modeLabel: document.getElementById('modeLabel'),
+            btnPencil: document.getElementById('btnPencil'),
+            btnEraser: document.getElementById('btnEraser'),
+            modal: document.getElementById('colorPickerModal'),
+            svBox: document.getElementById('svBox'),
+            svCursor: document.getElementById('svCursor'),
+            hueSlider: document.getElementById('hueSlider'),
+            hueThumb: document.getElementById('hueThumb'),
+            pickerPreview: document.getElementById('pickerPreview')
         };
 
         function init() {
             try {
+                log('>>> init called');
+
+                // Calculate canvas size from container
                 const container = document.querySelector('.content');
-                if (container.clientWidth === 0) {
+                if (!container || container.clientWidth === 0) {
                     setTimeout(init, 100);
                     return;
                 }
@@ -371,65 +586,184 @@
                 els.drawCanvas.height = size;
 
                 gridCtx = els.gridCanvas.getContext('2d');
-                drawCtx = els.drawCanvas.getContext('2d');
+                drawCtx = els.drawCanvas.getContext('2d', { alpha: true });
                 drawCtx.imageSmoothingEnabled = false;
 
+                // CRITICAL: Clear draw canvas to ensure transparency
+                drawCtx.clearRect(0, 0, size, size);
+                log('Draw canvas cleared to transparent');
+
+                log('Drawing initial grid');
                 drawGrid();
+
+                log('Rendering colors');
                 renderColors();
+
+                log('Calling updatePencilUI');
+                updatePencilUI();
 
                 els.drawCanvas.addEventListener('pointerdown', onDown);
                 window.addEventListener('pointermove', onMove);
                 window.addEventListener('pointerup', onUp);
 
-                log('2D Canvas initialized');
+                // Picker Events
+                els.svBox.addEventListener('pointerdown', (e) => {
+                    pickerState.isDraggingSV = true;
+                    updateSV(e);
+                });
+                els.hueSlider.addEventListener('pointerdown', (e) => {
+                    pickerState.isDraggingHue = true;
+                    updateHue(e);
+                });
+                window.addEventListener('pointermove', (e) => {
+                    if (pickerState.isDraggingSV) updateSV(e);
+                    if (pickerState.isDraggingHue) updateHue(e);
+                });
+                window.addEventListener('pointerup', () => {
+                    pickerState.isDraggingSV = false;
+                    pickerState.isDraggingHue = false;
+                });
 
-                // Try to init 3D safely
+                log('2D Canvas initialized');
                 setTimeout(init3D, 500);
             } catch (e) {
                 log('Init Error: ' + e.message);
             }
         }
 
-        function renderColors() {
-            try {
-                const html = DEFAULT_COLORS.map(c =>
-                    `<div class="swatch ${state.color === c ? 'active' : ''}" 
-                      style="background: ${c}" 
-                      onclick="setColor('${c}')"></div>`
-                ).join('');
+        // --- Color Picker Logic ---
+        function openColorPicker() {
+            // Init from current color
+            const rgb = hexToRgb(state.color) || { r: 255, g: 0, b: 0 };
+            const hsv = rgbToHsv(rgb.r, rgb.g, rgb.b);
+            pickerState.h = hsv.h;
+            pickerState.s = hsv.s;
+            pickerState.v = hsv.v;
 
-                els.colorPalette.innerHTML = html;
-                log('Colors rendered');
-            } catch (e) {
-                log('Error rendering colors: ' + e.message);
-            }
+            updatePickerUI();
+            els.modal.classList.add('visible');
+        }
+
+        function closeColorPicker() {
+            els.modal.classList.remove('visible');
+        }
+
+        function confirmColor() {
+            const rgb = hsvToRgb(pickerState.h, pickerState.s, pickerState.v);
+            const hex = rgbToHex(rgb.r, rgb.g, rgb.b);
+            setColor(hex);
+            closeColorPicker();
+        }
+
+        function updateSV(e) {
+            const rect = els.svBox.getBoundingClientRect();
+            let x = Math.max(0, Math.min(1, (e.clientX - rect.left) / rect.width));
+            let y = Math.max(0, Math.min(1, (e.clientY - rect.top) / rect.height));
+
+            pickerState.s = x;
+            pickerState.v = 1 - y;
+            updatePickerUI();
+        }
+
+        function updateHue(e) {
+            const rect = els.hueSlider.getBoundingClientRect();
+            let x = Math.max(0, Math.min(1, (e.clientX - rect.left) / rect.width));
+            pickerState.h = x;
+            updatePickerUI();
+        }
+
+        function updatePickerUI() {
+            // SV background based on Hue
+            const hColor = hsvToRgb(pickerState.h, 1, 1);
+            els.svBox.style.backgroundColor = `rgb(${hColor.r}, ${hColor.g}, ${hColor.b})`;
+
+            // SV Cursor
+            els.svCursor.style.left = (pickerState.s * 100) + '%';
+            els.svCursor.style.top = ((1 - pickerState.v) * 100) + '%';
+
+            // Hue Thumb
+            els.hueThumb.style.left = (pickerState.h * 100) + '%';
+
+            // Result
+            const rgb = hsvToRgb(pickerState.h, pickerState.s, pickerState.v);
+            const hex = rgbToHex(rgb.r, rgb.g, rgb.b);
+            els.pickerPreview.style.backgroundColor = hex;
+        }
+
+        // --- App Logic ---
+
+        function renderColors() {
+            const html = DEFAULT_COLORS.map(c =>
+                `<div class="swatch ${state.color === c ? 'active' : ''}" 
+                  style="background: ${c}" 
+                  onclick="setColor('${c}')"></div>`
+            ).join('');
+            els.colorPalette.innerHTML = html;
         }
 
         function setColor(color) {
             state.color = color;
-            // Don't re-render entire palette to keep focus
-            // just update active class if it matches
             document.querySelectorAll('.swatch').forEach(el => {
                 el.classList.remove('active');
-                // Check if the swatch's background color matches the new color
-                // This is a simple check and might not be robust for all color formats
                 if (el.style.backgroundColor === color) {
                     el.classList.add('active');
                 }
             });
-
-            // Also if we picked from native, maybe update the rainbow swatch? No need.
-            setTool('pencil');
+            setTool('pencil'); // Switch to pencil when color picked
+            updatePencilUI();
         }
+
+        function updatePencilUI() {
+            console.log('>>> updatePencilUI called');
+            console.log('state.tool:', state.tool);
+            console.log('state.color:', state.color);
+            console.log('els.btnPencil:', els.btnPencil);
+
+            if (state.tool === 'pencil') {
+                console.log('Applying color to pencil button...');
+                // Use CSS variable which is used by the .pencil-colored class
+                els.btnPencil.style.setProperty('--pencil-color', state.color);
+                els.btnPencil.classList.add('pencil-colored');
+                console.log('After setting --pencil-color:', els.btnPencil.style.getPropertyValue('--pencil-color'));
+                console.log('btnPencil classes:', els.btnPencil.className);
+
+                // Determine contrast text color
+                const rgb = hexToRgb(state.color) || { r: 255, g: 255, b: 255 };
+                const yiq = ((rgb.r * 299) + (rgb.g * 587) + (rgb.b * 114)) / 1000;
+                els.btnPencil.style.setProperty('color', (yiq >= 128) ? 'black' : 'white', 'important');
+                console.log('Text color set to:', (yiq >= 128) ? 'black' : 'white');
+
+            } else {
+                console.log('Tool is not pencil, resetting styles');
+                els.btnPencil.style.removeProperty('--pencil-color');
+                els.btnPencil.style.removeProperty('color');
+                els.btnPencil.classList.remove('pencil-colored');
+            }
+            console.log('<<< updatePencilUI complete');
+        }
+
+
+
 
         function setTool(tool) {
             state.tool = tool;
-            document.querySelectorAll('.btn-tool').forEach(b => b.classList.remove('active'));
-            if (tool === 'pencil') document.getElementById('btnPencil').classList.add('active');
-            if (tool === 'eraser') document.getElementById('btnEraser').classList.add('active');
+
+            // Reset UI - use removeProperty to clear !important styles
+            document.querySelectorAll('.btn-tool').forEach(b => {
+                b.classList.remove('active', 'pencil-colored');
+                b.style.removeProperty('background-color');
+                b.style.removeProperty('color');
+                b.style.removeProperty('border');
+            });
+
+            const activeBtn = tool === 'pencil' ? els.btnPencil : els.btnEraser;
+            activeBtn.classList.add('active');
+
+            if (tool === 'pencil') updatePencilUI();
 
             if (state.isPanMode) togglePan();
         }
+
 
         function setMode(mode) {
             state.mode = mode;
@@ -457,11 +791,13 @@
         }
 
         function drawGrid() {
-            gridCtx.fillStyle = '#cfd8dc';
-            gridCtx.fillRect(0, 0, state.canvasSize, state.canvasSize);
+            // IMPORTANT: Clear first, then ONLY draw grid lines - NO FILL!
+            gridCtx.clearRect(0, 0, state.canvasSize, state.canvasSize);
+
             gridCtx.beginPath();
-            gridCtx.strokeStyle = 'rgba(255,255,255, 0.3)';
+            gridCtx.strokeStyle = 'rgba(0, 0, 0, 0.2)'; // Dark grey grid lines
             gridCtx.lineWidth = 1;
+
             for (let i = 0; i <= SKIN_SIZE; i++) {
                 const pos = i * state.pixelSize;
                 gridCtx.moveTo(pos, 0);
@@ -656,12 +992,11 @@
                 }
                 log('✓ Context acquired');
 
-                // Fill with a solid skin tone color as base
-                log('Filling with default skin color...');
-                ctx.fillStyle = '#ECCBB9'; // Light tan skin color
+                // Grey fallback color for Steve when no texture
+                ctx.fillStyle = '#9E9E9E';
                 ctx.fillRect(0, 0, 64, 64);
-                log('✓ Base color filled');
 
+                // Draw ONLY user drawings/loaded skins (from drawCanvas)
                 log(`Drawing user canvas (${state.canvasSize}x${state.canvasSize})...`);
                 ctx.drawImage(els.drawCanvas, 0, 0, state.canvasSize, state.canvasSize, 0, 0, 64, 64);
                 log('✓ User drawing overlaid');
@@ -680,16 +1015,17 @@
             }
         }
 
+
         // Import texture from gallery (called from Flutter)
         function loadSkin(base64Data) {
             try {
                 log('Loading skin from gallery...');
                 const img = new Image();
                 img.onload = () => {
-                    // Clear current canvas
+                    // Clear draw canvas and load skin onto it
                     drawCtx.clearRect(0, 0, state.canvasSize, state.canvasSize);
 
-                    // Draw imported image scaled to canvas
+                    // Draw imported image to DRAW canvas
                     drawCtx.drawImage(img, 0, 0, state.canvasSize, state.canvasSize);
                     log('Skin loaded successfully');
 
@@ -707,23 +1043,41 @@
             }
         }
 
-        // Save current canvas as PNG with white background
+        // Save current canvas as PNG with TRANSPARENT background
         function saveImage() {
             try {
-                log('Saving image...');
+                console.log('=== SAVE IMAGE DEBUG ===');
+                console.log('drawCanvas size:', els.drawCanvas.width, 'x', els.drawCanvas.height);
+                console.log('state.canvasSize:', state.canvasSize);
+
+                // Check if drawCanvas has any content
+                const drawData = drawCtx.getImageData(0, 0, els.drawCanvas.width, els.drawCanvas.height).data;
+                let drawNonTransparentPixels = 0;
+                for (let i = 3; i < drawData.length; i += 4) {
+                    if (drawData[i] > 0) drawNonTransparentPixels++;
+                }
+                console.log('drawCanvas non-transparent pixels:', drawNonTransparentPixels);
+
                 const temp = document.createElement('canvas');
                 temp.width = 64;
                 temp.height = 64;
                 const ctx = temp.getContext('2d');
 
-                // Fill with WHITE background (no transparency)
-                ctx.fillStyle = '#FFFFFF';
-                ctx.fillRect(0, 0, 64, 64);
+                // NO background fill - keep transparent
 
-                // Draw user's drawing on top
+                // Draw ONLY user's drawing/loaded skin (from drawCanvas)
                 ctx.drawImage(els.drawCanvas, 0, 0, state.canvasSize, state.canvasSize, 0, 0, 64, 64);
 
-                // Return as base64 PNG
+                // Check result
+                const resultData = ctx.getImageData(0, 0, 64, 64).data;
+                let resultNonTransparentPixels = 0;
+                for (let i = 3; i < resultData.length; i += 4) {
+                    if (resultData[i] > 0) resultNonTransparentPixels++;
+                }
+                console.log('RESULT non-transparent pixels:', resultNonTransparentPixels);
+                console.log('=== END SAVE DEBUG ===');
+
+                // Return as base64 PNG (PNG supports transparency)
                 const dataUrl = temp.toDataURL('image/png');
                 return dataUrl.split(',')[1]; // Return only base64 part
             } catch (e) {
@@ -731,6 +1085,7 @@
                 return null;
             }
         }
+
 
         window.addEventListener('load', init);
         window.addEventListener('resize', () => { /* optional */ });

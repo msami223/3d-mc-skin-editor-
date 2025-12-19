@@ -34,12 +34,14 @@ class SkinProvider extends ChangeNotifier {
   }
 
   SkinProvider() {
-    _initializeDefaultSkin();
+    // Don't initialize a default skin - let it start as null
+    // This prevents loading a blank skin to the WebView
   }
 
   void _initializeDefaultSkin() {
     _skinImage = img.Image(width: 64, height: 64);
-    img.fill(_skinImage!, color: img.ColorRgba8(200, 200, 200, 255)); 
+    // Fill with TRANSPARENT pixels (alpha = 0) instead of gray
+    img.fill(_skinImage!, color: img.ColorRgba8(0, 0, 0, 0)); 
     _isDirty = true;
     _addToHistory();
   }
