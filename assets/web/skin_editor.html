@@ -139,6 +139,19 @@
             z-index: 50;
         }
 
+        .mode-pill.clickable {
+            pointer-events: auto;
+            cursor: pointer;
+            transition: transform 0.2s, background 0.2s;
+            border: none;
+            color: white;
+        }
+
+        .mode-pill.clickable:active {
+            transform: translateX(-50%) scale(0.95);
+            background: rgba(255, 255, 255, 0.3);
+        }
+
         .controls-area {
             flex-shrink: 0;
             background: rgba(0, 0, 0, 0.4);
@@ -409,6 +422,9 @@
             <div id="view3d" class="hidden">
                 <canvas id="viewer3d"></canvas>
                 <div class="mode-pill">Use one finger to rotate</div>
+                <button class="mode-pill clickable"
+                    style="top: auto; bottom: 20px; background: rgba(255, 255, 255, 0.2); backdrop-filter: blur(10px);"
+                    onclick="openColorPicker('body')">👕 Body Color</button>
             </div>
         </div>
 
@@ -425,7 +441,8 @@
                 <div class="tool-group">
                     <button class="btn-tool active" onclick="setTool('pencil')" id="btnPencil">✏️</button>
                     <button class="btn-tool" onclick="setTool('eraser')" id="btnEraser">🧹</button>
-                    <button class="btn-tool rainbow-btn" onclick="openColorPicker()" id="btnRainbow">🌈</button>
+                    <button class="btn-tool" onclick="setTool('eraser')" id="btnEraser">🧹</button>
+                    <button class="btn-tool rainbow-btn" onclick="openColorPicker('tool')" id="btnRainbow">🌈</button>
                 </div>
 
                 <div style="display: flex; align-items: center;">
@@ -550,7 +567,8 @@
         let pickerState = {
             h: 0, s: 1, v: 1,
             isDraggingSV: false,
-            isDraggingHue: false
+            isDraggingHue: false,
+            target: 'tool' // 'tool' or 'body'
         };
 
         const els = {
@@ -639,9 +657,13 @@
         }
 
         // --- Color Picker Logic ---
-        function openColorPicker() {
+        // --- Color Picker Logic ---
+        function openColorPicker(target = 'tool') {
+            pickerState.target = target;
+
             // Init from current color
-            const rgb = hexToRgb(state.color) || { r: 255, g: 0, b: 0 };
+            let currentColor = (target === 'body') ? state.skinBaseColor : state.color;
+            const rgb = hexToRgb(currentColor) || { r: 255, g: 0, b: 0 };
             const hsv = rgbToHsv(rgb.r, rgb.g, rgb.b);
             pickerState.h = hsv.h;
             pickerState.s = hsv.s;
@@ -658,7 +680,12 @@
         function confirmColor() {
             const rgb = hsvToRgb(pickerState.h, pickerState.s, pickerState.v);
             const hex = rgbToHex(rgb.r, rgb.g, rgb.b);
-            setColor(hex);
+
+            if (pickerState.target === 'body') {
+                setSkinBaseColor(hex);
+            } else {
+                setColor(hex);
+            }
             closeColorPicker();
         }
 
