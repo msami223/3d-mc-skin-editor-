@@ -23,7 +23,8 @@ class MinecraftSkinMakerApp extends StatelessWidget {
       title: 'Minecraft Skin Maker',
       theme: ThemeData(
         primarySwatch: Colors.green,
-        brightness: Brightness.dark,
+        brightness: Brightness.light,
+        scaffoldBackgroundColor: const Color(0xFFF5F5F5), // Light grey background
         useMaterial3: true,
       ),
       home: const CatalogueScreen(),

@@ -39,19 +39,36 @@ class SkinProvider extends ChangeNotifier {
   }
 
   void _initializeDefaultSkin() {
-    _skinImage = img.Image(width: 64, height: 64);
-    // Fill with TRANSPARENT pixels (alpha = 0) instead of gray
+    debugPrint('🟣 Creating empty transparent skin...');
+    _skinImage = img.Image(width: 64, height: 64, numChannels: 4);
+    // Fill with TRANSPARENT pixels - canvas shows JUST THE GRID
     img.fill(_skinImage!, color: img.ColorRgba8(0, 0, 0, 0)); 
     _isDirty = true;
     _addToHistory();
+    debugPrint('🟣 Empty transparent skin created');
   }
 
   void resetSkin() {
+    debugPrint('🟣 resetSkin() called - creating empty skin');
     _initializeDefaultSkin();
     _history.clear();
     _historyIndex = -1;
     _addToHistory();
     notifyListeners();
+    debugPrint('🟣 resetSkin() complete');
+  }
+
+  void loadSteveSkin() {
+    debugPrint('🟣 loadSteveSkin() called');
+    _skinImage = img.Image(width: 64, height: 64, numChannels: 4);
+    // User requested "just grid and nothing else" -> Transparent
+    img.fill(_skinImage!, color: img.ColorRgba8(0, 0, 0, 0)); 
+    _isDirty = true;
+    _history.clear();
+    _historyIndex = -1;
+    _addToHistory();
+    notifyListeners();
+    debugPrint('🟣 Steve skin loaded (Transparent)');
   }
 
   void loadSkin(img.Image image) {
