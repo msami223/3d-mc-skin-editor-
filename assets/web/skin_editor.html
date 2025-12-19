@@ -530,8 +530,14 @@
             pan: { x: 0, y: 0 },
             isPanMode: false,
             pixelSize: 0,
-            canvasSize: 0
+            canvasSize: 0,
+            skinBaseColor: '#9E9E9E' // Default grey base
         };
+
+        function setSkinBaseColor(color) {
+            state.skinBaseColor = color;
+            if (state.mode === '3d') update3DSkin();
+        }
 
         let viewer;
         let gridCtx, drawCtx;
@@ -994,8 +1000,8 @@
                 }
                 log('✓ Context acquired');
 
-                // Grey fallback color for Steve when no texture
-                ctx.fillStyle = '#9E9E9E';
+                // Base color for Steve (shows through transparent areas)
+                ctx.fillStyle = state.skinBaseColor || '#9E9E9E';
                 ctx.fillRect(0, 0, 64, 64);
 
                 // Draw ONLY user drawings/loaded skins (from drawCanvas)
